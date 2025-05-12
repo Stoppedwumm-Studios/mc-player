@@ -1,0 +1,43 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  db:
+    image: postgres:13-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: desktop_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password # Change this in production!
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./node-app/db.sql:/docker-entrypoint-initdb.d/init.sql # Initialize table
+    ports:
+      - "5432:5432" # Optional: expose if you need to connect directly
+    networks:
+      - app_network
+
+  app:
+    build: ./node-app
+    restart: always
+    ports:
+      - "3000:3000" # Node.js app listens on 3000
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock # Mount Docker socket!
+      - ./node-app:/app # Mount app code
+    environment:
+      DATABASE_URL: postgres://user:password@db:5432/desktop_db
+    depends_on:
+      - db
+    networks:
+      - app_network
+
+# Desktop containers will be created dynamically by the 'app' service
+# and attached to 'app_network' or another specified network.
+
+volumes:
+  db_data: {}
+
+networks:
+  app_network:
+    driver: bridge
